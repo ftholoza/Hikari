@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'pages/splash_intro_page.dart';
+import 'core/app_theme.dart';
+import 'pages/splash/splash_intro_page.dart';
 
 class HikariApp extends StatelessWidget {
   const HikariApp({super.key});
@@ -9,11 +10,7 @@ class HikariApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'HIKARI',
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF3A3A3A),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.dark,
       home: const SplashIntroPage(),
     );
   }

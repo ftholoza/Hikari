@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/simple_page.dart';
+import '../../widgets/simple_page.dart';
 
 class ReeducationPage extends StatelessWidget {
   const ReeducationPage({super.key});

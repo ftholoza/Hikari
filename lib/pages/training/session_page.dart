@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../widgets/app_card.dart';
+import '../../widgets/cards/app_card.dart';
 
 class SessionPage extends StatefulWidget {
   const SessionPage({super.key});
@@ -102,8 +102,7 @@ class _SessionPageState extends State<SessionPage> {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFF7ED8D1);
-
+    const brand = Color(0xFF4F69E0);
     String v2(String sensor, String k) {
       if (_json == null) return "-";
       final m = _json![sensor];

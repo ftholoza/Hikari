@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/simple_page.dart';
+import '../../widgets/simple_page.dart';
 
 class HistoriquePage extends StatelessWidget {
   const HistoriquePage({super.key});

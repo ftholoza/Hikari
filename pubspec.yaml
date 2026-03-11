@@ -1,5 +1,5 @@
-name: hikari_app
-description: "A new Flutter project."
+name: Hikari
+description: A new Flutter project.
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -22,14 +22,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
   assets:
-    - assets/thigh.png
-    - assets/shin_foot.png
-    - assets/icon.png
+    - assets/icon1.png
+    - assets/icon2.png
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon.png"
-  adaptive_icon_background: "#7ED8D1"
-  adaptive_icon_foreground: "assets/icon.png"
+  image_path: assets/icon1.png

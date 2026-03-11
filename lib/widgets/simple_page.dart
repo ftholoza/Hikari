@@ -7,8 +7,7 @@ class SimplePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFF7ED8D1);
-
+    const brand = Color(0xFF4F69E0);
     return SafeArea(
       child: Column(
         children: [
