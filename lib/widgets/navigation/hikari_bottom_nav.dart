@@ -30,6 +30,10 @@ class HikariBottomNav extends StatelessWidget {
         label: 'HISTORIQUE',
         icon: Icons.history,
       ),
+      _NavItemData(
+        label: 'BLUETOOTH',
+        icon: Icons.bluetooth,
+      ),
     ];
 
     return Row(
@@ -80,7 +84,7 @@ class _BottomNavButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
-        width: 56,
+        width: 50,
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(
