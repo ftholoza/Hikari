@@ -18,10 +18,14 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
 
   StreamSubscription<OrtheseData>? _dataSubscription;
   StreamSubscription<bool>? _connectionSubscription;
+  StreamSubscription<BluetoothAdapterState>? _adapterSubscription;
+  StreamSubscription<List<ScanResult>>? _scanSubscription;
 
   bool _isScanning = false;
   bool _isConnecting = false;
   bool _isConnected = false;
+  bool _isBluetoothOn = false;
+  bool _isBleSupported = true;
 
   double _angle = 0.0;
   double _vitesse = 0.0;
@@ -34,6 +38,8 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
   @override
   void initState() {
     super.initState();
+
+    _initBluetoothState();
 
     _dataSubscription = _bleService.dataStream.listen((data) {
       if (!mounted) return;
@@ -51,39 +57,155 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
       setState(() {
         _isConnected = connected;
         _statusText = connected ? 'Connecté à l’orthèse' : 'Déconnecté';
+
         if (!connected) {
           _isConnecting = false;
         }
       });
     });
+
+    _adapterSubscription = FlutterBluePlus.adapterState.listen((state) {
+      if (!mounted) return;
+
+      final bluetoothOn = state == BluetoothAdapterState.on;
+
+      setState(() {
+        _isBluetoothOn = bluetoothOn;
+
+        if (!bluetoothOn && !_isConnected && !_isScanning) {
+          _statusText = 'Bluetooth désactivé';
+        }
+      });
+    });
   }
 
-  Future<void> _scanDevices() async {
-    if (_isScanning) return;
+  Future<void> _initBluetoothState() async {
+    final supported = await FlutterBluePlus.isSupported;
 
-    setState(() {
-      _isScanning = true;
-      _statusText = 'Scan en cours...';
-      _devices = [];
-    });
+    if (!mounted) return;
 
-    final results = await _bleService.scanDevices();
+    if (!supported) {
+      setState(() {
+        _isBleSupported = false;
+        _statusText = 'BLE non supporté sur cet appareil';
+      });
+      return;
+    }
+
+    final state = await FlutterBluePlus.adapterState.first;
 
     if (!mounted) return;
 
     setState(() {
-      _isScanning = false;
-      _devices = results;
-      _statusText =
-          results.isEmpty ? 'Aucun appareil trouvé' : 'Appareils trouvés';
+      _isBleSupported = true;
+      _isBluetoothOn = state == BluetoothAdapterState.on;
+      _statusText = _isBluetoothOn ? 'Déconnecté' : 'Bluetooth désactivé';
     });
+  }
+
+  Future<void> _scanDevices() async {
+    if (_isScanning || _isConnecting) return;
+
+    if (!_isBleSupported) {
+      setState(() {
+        _statusText = 'BLE non supporté sur cet appareil';
+      });
+      return;
+    }
+
+    final state = await FlutterBluePlus.adapterState.first;
+
+    if (state != BluetoothAdapterState.on) {
+      setState(() {
+        _isBluetoothOn = false;
+        _statusText = 'Active le Bluetooth du téléphone avant de scanner';
+        _devices = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isScanning = true;
+      _isBluetoothOn = true;
+      _statusText = 'Scan en cours...';
+      _devices = [];
+    });
+
+    final Map<String, ScanResult> uniqueResults = {};
+
+    try {
+      await FlutterBluePlus.stopScan();
+      await _scanSubscription?.cancel();
+
+      _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+        for (final result in results) {
+          final id = result.device.remoteId.str;
+          uniqueResults[id] = result;
+        }
+
+        final visibleDevices = uniqueResults.values.where((result) {
+          final advName = result.advertisementData.advName.trim();
+          final platformName = result.device.platformName.trim();
+
+          return advName.isNotEmpty || platformName.isNotEmpty;
+        }).toList();
+
+        visibleDevices.sort((a, b) {
+          final aIsTarget = _isTargetDevice(a);
+          final bIsTarget = _isTargetDevice(b);
+
+          if (aIsTarget && !bIsTarget) return -1;
+          if (!aIsTarget && bIsTarget) return 1;
+
+          final aName = _displayName(a).toLowerCase();
+          final bName = _displayName(b).toLowerCase();
+
+          return aName.compareTo(bName);
+        });
+
+        if (!mounted) return;
+
+        setState(() {
+          _devices = visibleDevices;
+          _statusText = visibleDevices.isEmpty
+              ? 'Scan en cours...'
+              : '${visibleDevices.length} appareil(s) détecté(s)';
+        });
+      });
+
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 6),
+      );
+
+      await Future.delayed(const Duration(seconds: 6));
+      await FlutterBluePlus.stopScan();
+
+      if (!mounted) return;
+
+      setState(() {
+        _isScanning = false;
+        if (_devices.isEmpty) {
+          _statusText = 'Aucun appareil détecté';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isScanning = false;
+        _statusText = 'Erreur pendant le scan';
+      });
+
+      debugPrint('Erreur scan BLE: $e');
+    }
   }
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
     if (_isConnecting) return;
 
-    final deviceName =
-        device.platformName.isNotEmpty ? device.platformName : device.remoteId.str;
+    final deviceName = device.platformName.isNotEmpty
+        ? device.platformName
+        : device.remoteId.str;
 
     setState(() {
       _isConnecting = true;
@@ -97,9 +219,8 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
     setState(() {
       _isConnecting = false;
       _isConnected = success;
-      _statusText = success
-          ? 'Connecté à $deviceName'
-          : 'Connexion impossible à $deviceName';
+      _statusText =
+          success ? 'Connecté à $deviceName' : 'Connexion impossible à $deviceName';
     });
   }
 
@@ -111,17 +232,36 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
     setState(() {
       _isConnected = false;
       _isConnecting = false;
-      _statusText = 'Déconnecté';
+      _statusText = _isBluetoothOn ? 'Déconnecté' : 'Bluetooth désactivé';
     });
   }
 
+  bool _hasTargetService(ScanResult result) {
+    final serviceUuids = result.advertisementData.serviceUuids
+        .map((e) => e.toString().toLowerCase())
+        .toList();
+
+    return serviceUuids.contains(
+      BleService.serviceUuid.toString().toLowerCase(),
+    );
+  }
+
+  bool _isTargetDevice(ScanResult result) {
+    final advName = result.advertisementData.advName.trim();
+    final platformName = result.device.platformName.trim();
+
+    return advName == BleService.targetDeviceName ||
+        platformName == BleService.targetDeviceName ||
+        _hasTargetService(result);
+  }
+
   String _displayName(ScanResult result) {
-    final advName = result.advertisementData.advName;
-    final platformName = result.device.platformName;
+    final advName = result.advertisementData.advName.trim();
+    final platformName = result.device.platformName.trim();
 
     if (advName.isNotEmpty) return advName;
     if (platformName.isNotEmpty) return platformName;
-    return 'Appareil inconnu';
+    return 'Appareil BLE';
   }
 
   Widget _buildValueCard({
@@ -181,39 +321,116 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
   Widget _buildDeviceTile(ScanResult result) {
     final name = _displayName(result);
     final id = result.device.remoteId.str;
-    final isTarget = name == BleService.targetDeviceName;
+    final isTarget = _isTargetDevice(result);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isTarget ? Colors.blueAccent.withOpacity(0.5) : Colors.white12,
+    final borderColor = isTarget
+        ? Colors.blueAccent.withOpacity(0.5)
+        : Colors.white10;
+
+    final backgroundColor = isTarget
+        ? const Color(0xFF1E1E1E)
+        : const Color(0xFF161616);
+
+    final iconColor = isTarget ? Colors.blueAccent : Colors.white38;
+    final titleColor = isTarget ? Colors.white : Colors.white70;
+    final subtitleColor = isTarget ? Colors.white54 : Colors.white38;
+
+    return Opacity(
+      opacity: isTarget ? 1.0 : 0.75,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor),
         ),
-      ),
-      child: ListTile(
-        leading: Icon(
-          Icons.bluetooth,
-          color: isTarget ? Colors.blueAccent : Colors.white70,
-        ),
-        title: Text(
-          name,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          id,
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 12,
-          ),
-        ),
-        trailing: ElevatedButton(
-          onPressed: _isConnecting ? null : () => _connectToDevice(result.device),
-          child: const Text('Connecter'),
+        child: Row(
+          children: [
+            Icon(
+              Icons.bluetooth,
+              color: iconColor,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: titleColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (isTarget) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withOpacity(0.16),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.blueAccent.withOpacity(0.4),
+                            ),
+                          ),
+                          child: const Text(
+                            'ORTHÈSE',
+                            style: TextStyle(
+                              color: Colors.blueAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    id,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: subtitleColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 110,
+              height: 36,
+              child: FilledButton(
+                onPressed: (!_isConnecting && isTarget)
+                    ? () => _connectToDevice(result.device)
+                    : null,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  backgroundColor:
+                      isTarget ? const Color(0xFF4A90E2) : Colors.white12,
+                  foregroundColor: isTarget ? Colors.white : Colors.white38,
+                  disabledBackgroundColor: Colors.white12,
+                  disabledForegroundColor: Colors.white38,
+                ),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Connecter'),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -223,19 +440,24 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
   void dispose() {
     _dataSubscription?.cancel();
     _connectionSubscription?.cancel();
-    _bleService.dispose();
+    _adapterSubscription?.cancel();
+    _scanSubscription?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _isConnected
-        ? Colors.greenAccent
-        : _isConnecting
-            ? Colors.orangeAccent
-            : _isScanning
-                ? Colors.blueAccent
-                : Colors.redAccent;
+    final statusColor = !_isBleSupported
+        ? Colors.redAccent
+        : _isConnected
+            ? Colors.greenAccent
+            : _isConnecting
+                ? Colors.orangeAccent
+                : _isScanning
+                    ? Colors.blueAccent
+                    : _isBluetoothOn
+                        ? Colors.redAccent
+                        : Colors.orangeAccent;
 
     return Scaffold(
       appBar: AppBar(

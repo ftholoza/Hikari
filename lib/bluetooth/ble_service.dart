@@ -52,6 +52,10 @@ class BleService {
       for (final result in results) {
         final id = result.device.remoteId.str;
         uniqueResults[id] = result;
+
+        print(
+          'BLE trouvé: ${result.device.platformName} / ${result.advertisementData.advName} / $id',
+        );
       }
     });
 
@@ -96,7 +100,6 @@ class BleService {
                   if (value.isEmpty) return;
 
                   final raw = utf8.decode(value).trim();
-
                   final parsed = OrtheseData.fromBleString(raw);
 
                   _dataController.add(parsed);
@@ -104,7 +107,6 @@ class BleService {
               });
 
               _connectionController.add(true);
-
               return true;
             }
           }
@@ -113,7 +115,8 @@ class BleService {
 
       await disconnect();
       return false;
-    } catch (_) {
+    } catch (e) {
+      print('Erreur connexion BLE: $e');
       await disconnect();
       return false;
     }
@@ -131,13 +134,10 @@ class BleService {
     }
 
     _device = null;
-
     _connectionController.add(false);
   }
 
   void dispose() {
     _characteristicSubscription?.cancel();
-    _dataController.close();
-    _connectionController.close();
   }
 }
