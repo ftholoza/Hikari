@@ -239,7 +239,7 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Test Bluetooth'),
+        title: const Text('Bluetooth'),
       ),
       backgroundColor: const Color(0xFF121212),
       body: SafeArea(

@@ -6,6 +6,12 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'models/orthese_data.dart';
 
 class BleService {
+  BleService._internal();
+
+  static final BleService _instance = BleService._internal();
+
+  factory BleService() => _instance;
+
   static const String targetDeviceName = 'ESP32_Orthese';
 
   static final Guid serviceUuid =
@@ -28,7 +34,14 @@ class BleService {
   Stream<bool> get connectionStream => _connectionController.stream;
 
   BluetoothDevice? get device => _device;
+
   bool get isConnected => _device != null && _characteristic != null;
+
+  String? get connectedDeviceName {
+    if (_device == null) return null;
+    if (_device!.platformName.isNotEmpty) return _device!.platformName;
+    return _device!.remoteId.str;
+  }
 
   Future<List<ScanResult>> scanDevices() async {
     final Map<String, ScanResult> uniqueResults = {};
@@ -37,8 +50,8 @@ class BleService {
 
     final subscription = FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
-        final remoteId = result.device.remoteId.str;
-        uniqueResults[remoteId] = result;
+        final id = result.device.remoteId.str;
+        uniqueResults[id] = result;
       }
     });
 
@@ -76,18 +89,22 @@ class BleService {
               await _characteristic!.setNotifyValue(true);
 
               await _characteristicSubscription?.cancel();
+
               _characteristicSubscription =
                   _characteristic!.lastValueStream.listen((value) {
                 try {
                   if (value.isEmpty) return;
 
                   final raw = utf8.decode(value).trim();
+
                   final parsed = OrtheseData.fromBleString(raw);
+
                   _dataController.add(parsed);
                 } catch (_) {}
               });
 
               _connectionController.add(true);
+
               return true;
             }
           }
@@ -114,6 +131,7 @@ class BleService {
     }
 
     _device = null;
+
     _connectionController.add(false);
   }
 

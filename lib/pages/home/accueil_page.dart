@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../mKneeHurts/m_knee_hurts.dart';
 import '../../widgets/layout/hikari_header.dart';
+import '../bluetooth/bluetooth_test_page.dart';
 
 class AccueilPage extends StatefulWidget {
   const AccueilPage({super.key});
@@ -115,9 +116,10 @@ class _AccueilPageState extends State<AccueilPage> {
                               ),
                             ),
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Connexion orthèse à brancher'),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const BluetoothTestPage(),
                                 ),
                               );
                             },
