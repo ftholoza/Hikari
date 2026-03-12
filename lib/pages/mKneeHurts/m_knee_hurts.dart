@@ -79,7 +79,6 @@ class _KneePainPageState extends State<KneePainPage> {
                       ),
                     ),
                     const SizedBox(height: 18),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(14, 16, 14, 22),
@@ -92,7 +91,6 @@ class _KneePainPageState extends State<KneePainPage> {
                         children: [
                           const _SectionTitle('INTENSITÉ :'),
                           const SizedBox(height: 14),
-
                           Column(
                             children: [
                               SizedBox(
@@ -163,7 +161,6 @@ class _KneePainPageState extends State<KneePainPage> {
                           const SizedBox(height: 22),
                           const _SectionTitle('LOCALISATION :'),
                           const SizedBox(height: 14),
-
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -182,71 +179,57 @@ class _KneePainPageState extends State<KneePainPage> {
                               Expanded(
                                 child: Column(
                                   children: [
-                                    Row(
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 10,
                                       children: [
-                                        Expanded(
+                                        SizedBox(
+                                          width: 90,
                                           child: _ChoiceButton(
                                             label: 'Avant',
-                                            selected:
-                                                selectedLocation == 'Avant',
+                                            selected: selectedLocation == 'Avant',
                                             onTap: () => setState(
                                               () => selectedLocation = 'Avant',
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
+                                        SizedBox(
+                                          width: 90,
                                           child: _ChoiceButton(
                                             label: 'Arrière',
-                                            selected:
-                                                selectedLocation == 'Arrière',
+                                            selected: selectedLocation == 'Arrière',
                                             onTap: () => setState(
-                                              () =>
-                                                  selectedLocation = 'Arrière',
+                                              () => selectedLocation = 'Arrière',
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
+                                        SizedBox(
+                                          width: 90,
                                           child: _ChoiceButton(
                                             label: 'Intérieur',
-                                            selected:
-                                                selectedLocation == 'Intérieur',
+                                            selected: selectedLocation == 'Intérieur',
                                             onTap: () => setState(
-                                              () => selectedLocation =
-                                                  'Intérieur',
+                                              () => selectedLocation = 'Intérieur',
                                             ),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
                                         SizedBox(
                                           width: 110,
                                           child: _ChoiceButton(
                                             label: 'Extérieur',
-                                            selected:
-                                                selectedLocation == 'Extérieur',
+                                            selected: selectedLocation == 'Extérieur',
                                             onTap: () => setState(
-                                              () => selectedLocation =
-                                                  'Extérieur',
+                                              () => selectedLocation = 'Extérieur',
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 10),
                                         SizedBox(
-                                          width: 110,
+                                          width: 130,
                                           child: _ChoiceButton(
                                             label: 'Je ne sais pas',
-                                            selected: selectedLocation ==
-                                                'Je ne sais pas',
+                                            selected: selectedLocation == 'Je ne sais pas',
                                             onTap: () => setState(
-                                              () => selectedLocation =
-                                                  'Je ne sais pas',
+                                              () => selectedLocation = 'Je ne sais pas',
                                             ),
                                           ),
                                         ),
@@ -257,26 +240,26 @@ class _KneePainPageState extends State<KneePainPage> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 24),
                           const _SectionTitle('MOMENT :'),
                           const SizedBox(height: 14),
-
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 10,
+                            alignment: WrapAlignment.center,
                             children: [
-                              Expanded(
+                              SizedBox(
+                                width: 155,
                                 child: _ChoiceButton(
                                   label: "Avant l'entrainement",
-                                  selected:
-                                      selectedMoment == "Avant l'entrainement",
+                                  selected: selectedMoment == "Avant l'entrainement",
                                   onTap: () => setState(
-                                    () => selectedMoment =
-                                        "Avant l'entrainement",
+                                    () => selectedMoment = "Avant l'entrainement",
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
+                              SizedBox(
+                                width: 110,
                                 child: _ChoiceButton(
                                   label: 'Pendant',
                                   selected: selectedMoment == 'Pendant',
@@ -285,24 +268,16 @@ class _KneePainPageState extends State<KneePainPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
+                              SizedBox(
+                                width: 155,
                                 child: _ChoiceButton(
                                   label: "Après l'entrainement",
-                                  selected:
-                                      selectedMoment == "Après l'entrainement",
+                                  selected: selectedMoment == "Après l'entrainement",
                                   onTap: () => setState(
-                                    () => selectedMoment =
-                                        "Après l'entrainement",
+                                    () => selectedMoment = "Après l'entrainement",
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
                               SizedBox(
                                 width: 150,
                                 child: _ChoiceButton(
@@ -313,7 +288,6 @@ class _KneePainPageState extends State<KneePainPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
                               SizedBox(
                                 width: 150,
                                 child: _ChoiceButton(
@@ -326,7 +300,6 @@ class _KneePainPageState extends State<KneePainPage> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 28),
                           const _SectionTitle('SIGNES IMPORTANTS :'),
                           const SizedBox(height: 8),
@@ -339,7 +312,6 @@ class _KneePainPageState extends State<KneePainPage> {
                             ),
                           ),
                           const SizedBox(height: 12),
-
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -358,8 +330,7 @@ class _KneePainPageState extends State<KneePainPage> {
                                       label: 'Genou qui lâche',
                                       value: symptoms['Genou qui lâche']!,
                                       onChanged: (v) => setState(
-                                        () =>
-                                            symptoms['Genou qui lâche'] = v,
+                                        () => symptoms['Genou qui lâche'] = v,
                                       ),
                                     ),
                                   ],
@@ -389,7 +360,6 @@ class _KneePainPageState extends State<KneePainPage> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 30),
                           Center(
                             child: SizedBox(
@@ -469,8 +439,9 @@ class _ChoiceButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
-        height: 40,
+        height: 44,
         alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: selected ? blue : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
@@ -481,11 +452,14 @@ class _ChoiceButton extends StatelessWidget {
         ),
         child: Text(
           label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 13.5,
+            fontSize: 12.5,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            height: 1.1,
           ),
         ),
       ),
