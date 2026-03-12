@@ -5,6 +5,7 @@ import 'accueil_page.dart';
 import '../training/entrainement_page.dart';
 import '../rehab/reeducation_page.dart';
 import '../history/historique_page.dart';
+import '../mKneeHurts/m_knee_hurts.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -21,6 +22,7 @@ class _HomeShellState extends State<HomeShell> {
     EntrainementPage(),
     ReeducationPage(),
     HistoriquePage(),
+    KneePainPage(),
   ];
 
   @override

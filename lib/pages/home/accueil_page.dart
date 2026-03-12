@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
+import '../mKneeHurts/m_knee_hurts.dart';
+import '../../widgets/layout/hikari_header.dart';
 
 class AccueilPage extends StatefulWidget {
   const AccueilPage({super.key});
@@ -27,7 +29,7 @@ class _AccueilPageState extends State<AccueilPage> {
       color: AppColors.background,
       child: Column(
         children: [
-          const _TopHeader(),
+          const HikariHeader(),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
@@ -204,9 +206,10 @@ class _AccueilPageState extends State<AccueilPage> {
 
                   GestureDetector(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Accès rapide 'J'ai mal au genou'"),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const KneePainPage(),
                         ),
                       );
                     },
@@ -244,29 +247,6 @@ class _AccueilPageState extends State<AccueilPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TopHeader extends StatelessWidget {
-  const _TopHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 90,
-      width: double.infinity,
-      color: AppColors.primary,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Image.asset(
-            'assets/icon1.png',
-            height: 50,
-            fit: BoxFit.contain,
-          ),
-        ),
       ),
     );
   }

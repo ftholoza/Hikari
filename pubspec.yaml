@@ -28,6 +28,8 @@ flutter:
     - assets/icon1.png
     - assets/icon2.png
     - assets/icon3.png
+    - assets/images/knee.png
+
 
 flutter_launcher_icons:
   android: true
