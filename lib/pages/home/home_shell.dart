@@ -18,17 +18,29 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  late final List<Widget> _pages = const [
-    AccueilPage(),
-    EntrainementPage(),
-    ReeducationPage(),
-    HistoriquePage(),
-    BluetoothTestPage(),
-    KneePainPage(),
-  ];
+  Widget _buildPage() {
+    switch (_index) {
+      case 0:
+        return const AccueilPage();
+      case 1:
+        return const EntrainementPage();
+      case 2:
+        return const ReeducationPage();
+      case 3:
+        return const HistoriquePage();
+      case 4:
+        return const BluetoothTestPage();
+      case 5:
+        return const KneePainPage();
+      default:
+        return const AccueilPage();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('HomeShell build - index: $_index');
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -36,10 +48,7 @@ class _HomeShellState extends State<HomeShell> {
         child: Column(
           children: [
             Expanded(
-              child: IndexedStack(
-                index: _index,
-                children: _pages,
-              ),
+              child: _buildPage(),
             ),
             Container(
               decoration: const BoxDecoration(
@@ -54,7 +63,10 @@ class _HomeShellState extends State<HomeShell> {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
               child: HikariBottomNav(
                 currentIndex: _index,
-                onTap: (i) => setState(() => _index = i),
+                onTap: (i) {
+                  debugPrint('Bottom nav tap: $i');
+                  setState(() => _index = i);
+                },
               ),
             ),
           ],

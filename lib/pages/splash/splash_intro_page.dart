@@ -18,6 +18,7 @@ class _SplashIntroPageState extends State<SplashIntroPage>
   @override
   void initState() {
     super.initState();
+    debugPrint('SplashIntroPage initState');
 
     _masterController = AnimationController(
       vsync: this,
@@ -25,32 +26,53 @@ class _SplashIntroPageState extends State<SplashIntroPage>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future.delayed(const Duration(milliseconds: 40));
-      if (!mounted) return;
+      try {
+        debugPrint('Splash post frame start');
 
-      await _masterController.forward();
-      if (!mounted) return;
+        await precacheImage(const AssetImage('assets/icon1.png'), context);
+        await precacheImage(const AssetImage('assets/icon2.png'), context);
+        await precacheImage(const AssetImage('assets/icon3.png'), context);
 
-      _navTimer = Timer(const Duration(milliseconds: 250), () {
+        debugPrint('Splash assets preloaded');
+
+        await Future.delayed(const Duration(milliseconds: 40));
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 450),
-            pageBuilder: (_, __, ___) => const HomeShell(),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-          ),
-        );
-      });
+
+        debugPrint('Splash animation forward start');
+        await _masterController.forward();
+        if (!mounted) return;
+        debugPrint('Splash animation forward done');
+
+        _navTimer = Timer(const Duration(milliseconds: 250), () {
+          if (!mounted) return;
+          debugPrint('Navigation vers HomeShell');
+
+          Navigator.of(context).pushReplacement(
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 450),
+              pageBuilder: (_, __, ___) {
+                debugPrint('HomeShell pageBuilder appelé');
+                return const HomeShell();
+              },
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+            ),
+          );
+        });
+      } catch (e, s) {
+        debugPrint('Erreur SplashIntroPage: $e');
+        debugPrint('$s');
+      }
     });
   }
 
   @override
   void dispose() {
+    debugPrint('SplashIntroPage dispose');
     _navTimer?.cancel();
     _masterController.dispose();
     super.dispose();
@@ -61,7 +83,6 @@ class _SplashIntroPageState extends State<SplashIntroPage>
     const brand = Color(0xFF4F69E0);
     const darkBg = Color(0xFF3A3A3A);
 
-    // Taille volontairement proche du splash natif Android
     const logoSize = 138.0;
     const wordmarkWidth = 170.0;
 
@@ -72,11 +93,6 @@ class _SplashIntroPageState extends State<SplashIntroPage>
       body: AnimatedBuilder(
         animation: t,
         builder: (context, _) {
-          // 0.00 -> 0.52 : logo rond visible sur fond gris
-          // 0.18 -> 0.55 : apparition progressive de icon3
-          // 0.58 -> 0.82 : fond gris -> bleu
-          // 0.72 -> 1.00 : apparition du grand logo bleu final
-
           final backgroundProgress = CurvedAnimation(
             parent: t,
             curve: const Interval(0.58, 0.82, curve: Curves.easeInOutCubic),
@@ -91,9 +107,9 @@ class _SplashIntroPageState extends State<SplashIntroPage>
               ).value;
 
           final wordmarkOpacity = CurvedAnimation(
-            parent: t,
-            curve: const Interval(0.18, 0.46, curve: Curves.easeOutCubic),
-          ).value *
+                parent: t,
+                curve: const Interval(0.18, 0.46, curve: Curves.easeOutCubic),
+              ).value *
               logoFadeOut;
 
           final rotationProgress = CurvedAnimation(
@@ -101,10 +117,8 @@ class _SplashIntroPageState extends State<SplashIntroPage>
             curve: const Interval(0.02, 0.56, curve: Curves.easeInOut),
           ).value;
 
-          // Rotation qui démarre doucement puis accélère légèrement
           final rotationAngle = rotationProgress * 2.8 * pi;
 
-          // Très léger scale pour éviter tout "saut" visuel après le splash natif
           final logoScale = Tween<double>(
             begin: 1.0,
             end: 1.015,
@@ -135,7 +149,6 @@ class _SplashIntroPageState extends State<SplashIntroPage>
             children: [
               ColoredBox(color: bgColor),
 
-              // Bloc logo rond + icon3
               Center(
                 child: Transform.translate(
                   offset: const Offset(0, 38),
@@ -153,6 +166,13 @@ class _SplashIntroPageState extends State<SplashIntroPage>
                               width: logoSize,
                               height: logoSize,
                               fit: BoxFit.contain,
+                              errorBuilder: (_, error, stackTrace) {
+                                debugPrint('Erreur asset icon2.png: $error');
+                                return const SizedBox(
+                                  width: logoSize,
+                                  height: logoSize,
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(height: 18),
@@ -162,6 +182,13 @@ class _SplashIntroPageState extends State<SplashIntroPage>
                               'assets/icon3.png',
                               width: wordmarkWidth,
                               fit: BoxFit.contain,
+                              errorBuilder: (_, error, stackTrace) {
+                                debugPrint('Erreur asset icon3.png: $error');
+                                return const SizedBox(
+                                  width: wordmarkWidth,
+                                  height: 40,
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -171,7 +198,6 @@ class _SplashIntroPageState extends State<SplashIntroPage>
                 ),
               ),
 
-              // Grand logo final
               Center(
                 child: Opacity(
                   opacity: finalLogoOpacity,
@@ -181,6 +207,10 @@ class _SplashIntroPageState extends State<SplashIntroPage>
                       'assets/icon1.png',
                       width: screenWidth * 0.92,
                       fit: BoxFit.contain,
+                      errorBuilder: (_, error, stackTrace) {
+                        debugPrint('Erreur asset icon1.png: $error');
+                        return const SizedBox.shrink();
+                      },
                     ),
                   ),
                 ),

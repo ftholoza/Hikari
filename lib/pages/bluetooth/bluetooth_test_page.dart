@@ -38,48 +38,103 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
   @override
   void initState() {
     super.initState();
+    debugPrint('BluetoothTestPage initState');
 
-    _initBluetoothState();
+    _safeInitBluetooth();
 
-    _dataSubscription = _bleService.dataStream.listen((data) {
+    _dataSubscription = _bleService.dataStream.listen(
+      (data) {
+        if (!mounted) return;
+
+        setState(() {
+          _angle = data.angle;
+          _vitesse = data.vitesse;
+          _temps = data.temps;
+        });
+      },
+      onError: (error, stackTrace) {
+        debugPrint('Erreur dataStream: $error');
+        debugPrint('$stackTrace');
+      },
+    );
+
+    _connectionSubscription = _bleService.connectionStream.listen(
+      (connected) {
+        if (!mounted) return;
+
+        setState(() {
+          _isConnected = connected;
+          _statusText = connected ? 'Connecté à l’orthèse' : 'Déconnecté';
+
+          if (!connected) {
+            _isConnecting = false;
+          }
+        });
+      },
+      onError: (error, stackTrace) {
+        debugPrint('Erreur connectionStream: $error');
+        debugPrint('$stackTrace');
+      },
+    );
+
+    try {
+      _adapterSubscription = FlutterBluePlus.adapterState.listen(
+        (state) {
+          if (!mounted) return;
+
+          final bluetoothOn = state == BluetoothAdapterState.on;
+
+          setState(() {
+            _isBluetoothOn = bluetoothOn;
+
+            if (!bluetoothOn && !_isConnected && !_isScanning) {
+              _statusText = 'Bluetooth désactivé';
+            }
+          });
+        },
+        onError: (error, stackTrace) {
+          debugPrint('Erreur adapterState.listen: $error');
+          debugPrint('$stackTrace');
+
+          if (!mounted) return;
+
+          setState(() {
+            _statusText = 'Erreur Bluetooth';
+            _isBleSupported = false;
+            _isBluetoothOn = false;
+          });
+        },
+      );
+    } catch (e, s) {
+      debugPrint('Erreur abonnement adapterState: $e');
+      debugPrint('$s');
+
+      _isBleSupported = false;
+      _isBluetoothOn = false;
+      _statusText = 'Bluetooth indisponible';
+    }
+  }
+
+  Future<void> _safeInitBluetooth() async {
+    try {
+      await _initBluetoothState();
+    } catch (e, s) {
+      debugPrint('Erreur _initBluetoothState: $e');
+      debugPrint('$s');
+
       if (!mounted) return;
 
       setState(() {
-        _angle = data.angle;
-        _vitesse = data.vitesse;
-        _temps = data.temps;
+        _isBleSupported = false;
+        _isBluetoothOn = false;
+        _statusText = 'Bluetooth indisponible sur cet appareil';
       });
-    });
-
-    _connectionSubscription = _bleService.connectionStream.listen((connected) {
-      if (!mounted) return;
-
-      setState(() {
-        _isConnected = connected;
-        _statusText = connected ? 'Connecté à l’orthèse' : 'Déconnecté';
-
-        if (!connected) {
-          _isConnecting = false;
-        }
-      });
-    });
-
-    _adapterSubscription = FlutterBluePlus.adapterState.listen((state) {
-      if (!mounted) return;
-
-      final bluetoothOn = state == BluetoothAdapterState.on;
-
-      setState(() {
-        _isBluetoothOn = bluetoothOn;
-
-        if (!bluetoothOn && !_isConnected && !_isScanning) {
-          _statusText = 'Bluetooth désactivé';
-        }
-      });
-    });
+    }
   }
 
   Future<void> _initBluetoothState() async {
+    debugPrint('Init Bluetooth start');
+
     final supported = await FlutterBluePlus.isSupported;
 
     if (!mounted) return;
@@ -89,6 +144,7 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
         _isBleSupported = false;
         _statusText = 'BLE non supporté sur cet appareil';
       });
+      debugPrint('BLE non supporté');
       return;
     }
 
@@ -101,6 +157,8 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
       _isBluetoothOn = state == BluetoothAdapterState.on;
       _statusText = _isBluetoothOn ? 'Déconnecté' : 'Bluetooth désactivé';
     });
+
+    debugPrint('Init Bluetooth ok - state: $state');
   }
 
   Future<void> _scanDevices() async {
@@ -113,65 +171,78 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
       return;
     }
 
-    final state = await FlutterBluePlus.adapterState.first;
+    try {
+      final state = await FlutterBluePlus.adapterState.first;
 
-    if (state != BluetoothAdapterState.on) {
+      if (state != BluetoothAdapterState.on) {
+        setState(() {
+          _isBluetoothOn = false;
+          _statusText = 'Active le Bluetooth du téléphone avant de scanner';
+          _devices = [];
+        });
+        return;
+      }
+
       setState(() {
-        _isBluetoothOn = false;
-        _statusText = 'Active le Bluetooth du téléphone avant de scanner';
+        _isScanning = true;
+        _isBluetoothOn = true;
+        _statusText = 'Scan en cours...';
         _devices = [];
       });
-      return;
-    }
 
-    setState(() {
-      _isScanning = true;
-      _isBluetoothOn = true;
-      _statusText = 'Scan en cours...';
-      _devices = [];
-    });
+      final Map<String, ScanResult> uniqueResults = {};
 
-    final Map<String, ScanResult> uniqueResults = {};
-
-    try {
       await FlutterBluePlus.stopScan();
       await _scanSubscription?.cancel();
 
-      _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
-        for (final result in results) {
-          final id = result.device.remoteId.str;
-          uniqueResults[id] = result;
-        }
+      _scanSubscription = FlutterBluePlus.scanResults.listen(
+        (results) {
+          for (final result in results) {
+            final id = result.device.remoteId.str;
+            uniqueResults[id] = result;
+          }
 
-        final visibleDevices = uniqueResults.values.where((result) {
-          final advName = result.advertisementData.advName.trim();
-          final platformName = result.device.platformName.trim();
+          final visibleDevices = uniqueResults.values.where((result) {
+            final advName = result.advertisementData.advName.trim();
+            final platformName = result.device.platformName.trim();
 
-          return advName.isNotEmpty || platformName.isNotEmpty;
-        }).toList();
+            return advName.isNotEmpty || platformName.isNotEmpty;
+          }).toList();
 
-        visibleDevices.sort((a, b) {
-          final aIsTarget = _isTargetDevice(a);
-          final bIsTarget = _isTargetDevice(b);
+          visibleDevices.sort((a, b) {
+            final aIsTarget = _isTargetDevice(a);
+            final bIsTarget = _isTargetDevice(b);
 
-          if (aIsTarget && !bIsTarget) return -1;
-          if (!aIsTarget && bIsTarget) return 1;
+            if (aIsTarget && !bIsTarget) return -1;
+            if (!aIsTarget && bIsTarget) return 1;
 
-          final aName = _displayName(a).toLowerCase();
-          final bName = _displayName(b).toLowerCase();
+            final aName = _displayName(a).toLowerCase();
+            final bName = _displayName(b).toLowerCase();
 
-          return aName.compareTo(bName);
-        });
+            return aName.compareTo(bName);
+          });
 
-        if (!mounted) return;
+          if (!mounted) return;
 
-        setState(() {
-          _devices = visibleDevices;
-          _statusText = visibleDevices.isEmpty
-              ? 'Scan en cours...'
-              : '${visibleDevices.length} appareil(s) détecté(s)';
-        });
-      });
+          setState(() {
+            _devices = visibleDevices;
+            _statusText = visibleDevices.isEmpty
+                ? 'Scan en cours...'
+                : '${visibleDevices.length} appareil(s) détecté(s)';
+          });
+        },
+        onError: (error, stackTrace) {
+          debugPrint('Erreur scanResults.listen: $error');
+          debugPrint('$stackTrace');
+
+          if (!mounted) return;
+
+          setState(() {
+            _isScanning = false;
+            _statusText = 'Erreur pendant le scan';
+          });
+        },
+      );
 
       await FlutterBluePlus.startScan(
         timeout: const Duration(seconds: 6),
@@ -188,15 +259,16 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
           _statusText = 'Aucun appareil détecté';
         }
       });
-    } catch (e) {
+    } catch (e, s) {
+      debugPrint('Erreur scan BLE: $e');
+      debugPrint('$s');
+
       if (!mounted) return;
 
       setState(() {
         _isScanning = false;
         _statusText = 'Erreur pendant le scan';
       });
-
-      debugPrint('Erreur scan BLE: $e');
     }
   }
 
@@ -212,20 +284,39 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
       _statusText = 'Connexion à $deviceName...';
     });
 
-    final success = await _bleService.connectToDevice(device);
+    try {
+      final success = await _bleService.connectToDevice(device);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isConnecting = false;
-      _isConnected = success;
-      _statusText =
-          success ? 'Connecté à $deviceName' : 'Connexion impossible à $deviceName';
-    });
+      setState(() {
+        _isConnecting = false;
+        _isConnected = success;
+        _statusText = success
+            ? 'Connecté à $deviceName'
+            : 'Connexion impossible à $deviceName';
+      });
+    } catch (e, s) {
+      debugPrint('Erreur connexion BLE: $e');
+      debugPrint('$s');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isConnecting = false;
+        _isConnected = false;
+        _statusText = 'Erreur de connexion à $deviceName';
+      });
+    }
   }
 
   Future<void> _disconnect() async {
-    await _bleService.disconnect();
+    try {
+      await _bleService.disconnect();
+    } catch (e, s) {
+      debugPrint('Erreur déconnexion BLE: $e');
+      debugPrint('$s');
+    }
 
     if (!mounted) return;
 
@@ -438,6 +529,7 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
 
   @override
   void dispose() {
+    debugPrint('BluetoothTestPage dispose');
     _dataSubscription?.cancel();
     _connectionSubscription?.cancel();
     _adapterSubscription?.cancel();
@@ -506,7 +598,9 @@ class _BluetoothTestPageState extends State<BluetoothTestPage> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: (_isScanning || _isConnecting) ? null : _scanDevices,
+                      onPressed: (_isScanning || _isConnecting)
+                          ? null
+                          : _scanDevices,
                       child: Text(_isScanning ? 'Scan...' : 'Scanner'),
                     ),
                   ),

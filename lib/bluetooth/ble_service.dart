@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'models/orthese_data.dart';
@@ -45,34 +46,56 @@ class BleService {
 
   Future<List<ScanResult>> scanDevices() async {
     final Map<String, ScanResult> uniqueResults = {};
+    StreamSubscription<List<ScanResult>>? subscription;
 
-    await FlutterBluePlus.stopScan();
+    try {
+      debugPrint('BleService.scanDevices start');
 
-    final subscription = FlutterBluePlus.scanResults.listen((results) {
-      for (final result in results) {
-        final id = result.device.remoteId.str;
-        uniqueResults[id] = result;
+      await FlutterBluePlus.stopScan();
 
-        print(
-          'BLE trouvé: ${result.device.platformName} / ${result.advertisementData.advName} / $id',
-        );
-      }
-    });
+      subscription = FlutterBluePlus.scanResults.listen(
+        (results) {
+          for (final result in results) {
+            final id = result.device.remoteId.str;
+            uniqueResults[id] = result;
 
-    await FlutterBluePlus.startScan(
-      timeout: const Duration(seconds: 6),
-    );
+            debugPrint(
+              'BLE trouvé: ${result.device.platformName} / '
+              '${result.advertisementData.advName} / $id',
+            );
+          }
+        },
+        onError: (error, stackTrace) {
+          debugPrint('Erreur scanResults.listen: $error');
+          debugPrint('$stackTrace');
+        },
+      );
 
-    await Future.delayed(const Duration(seconds: 6));
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 6),
+      );
 
-    await FlutterBluePlus.stopScan();
-    await subscription.cancel();
+      await Future.delayed(const Duration(seconds: 6));
+      await FlutterBluePlus.stopScan();
 
-    return uniqueResults.values.toList();
+      debugPrint(
+        'BleService.scanDevices done - ${uniqueResults.length} appareil(s)',
+      );
+
+      return uniqueResults.values.toList();
+    } catch (e, s) {
+      debugPrint('Erreur scanDevices: $e');
+      debugPrint('$s');
+      return [];
+    } finally {
+      await subscription?.cancel();
+    }
   }
 
   Future<bool> connectToDevice(BluetoothDevice device) async {
     try {
+      debugPrint('BleService.connectToDevice start: ${device.remoteId.str}');
+
       await disconnect();
 
       _device = device;
@@ -82,12 +105,22 @@ class BleService {
         timeout: const Duration(seconds: 10),
       );
 
+      debugPrint('BLE connecté au device, découverte des services...');
+
       final services = await _device!.discoverServices();
 
       for (final service in services) {
+        debugPrint('Service détecté: ${service.uuid}');
+
         if (service.uuid == serviceUuid) {
+          debugPrint('Service cible trouvé');
+
           for (final characteristic in service.characteristics) {
+            debugPrint('Characteristic détectée: ${characteristic.uuid}');
+
             if (characteristic.uuid == characteristicUuid) {
+              debugPrint('Characteristic cible trouvée');
+
               _characteristic = characteristic;
 
               await _characteristic!.setNotifyValue(true);
@@ -95,49 +128,89 @@ class BleService {
               await _characteristicSubscription?.cancel();
 
               _characteristicSubscription =
-                  _characteristic!.lastValueStream.listen((value) {
-                try {
-                  if (value.isEmpty) return;
+                  _characteristic!.lastValueStream.listen(
+                (value) {
+                  try {
+                    if (value.isEmpty) return;
 
-                  final raw = utf8.decode(value).trim();
-                  final parsed = OrtheseData.fromBleString(raw);
+                    final raw = utf8.decode(value).trim();
+                    debugPrint('BLE raw: $raw');
 
-                  _dataController.add(parsed);
-                } catch (_) {}
-              });
+                    final parsed = OrtheseData.fromBleString(raw);
+                    _dataController.add(parsed);
+                  } catch (e, s) {
+                    debugPrint('Erreur parsing BLE: $e');
+                    debugPrint('$s');
+                  }
+                },
+                onError: (error, stackTrace) {
+                  debugPrint('Erreur characteristic stream: $error');
+                  debugPrint('$stackTrace');
+                },
+              );
 
               _connectionController.add(true);
+              debugPrint('BleService.connectToDevice success');
               return true;
             }
           }
         }
       }
 
+      debugPrint('Service ou characteristic cible introuvable');
       await disconnect();
       return false;
-    } catch (e) {
-      print('Erreur connexion BLE: $e');
+    } catch (e, s) {
+      debugPrint('Erreur connexion BLE: $e');
+      debugPrint('$s');
       await disconnect();
       return false;
     }
   }
 
   Future<void> disconnect() async {
-    await _characteristicSubscription?.cancel();
+    debugPrint('BleService.disconnect start');
+
+    try {
+      await _characteristicSubscription?.cancel();
+    } catch (e, s) {
+      debugPrint('Erreur cancel characteristicSubscription: $e');
+      debugPrint('$s');
+    }
+
     _characteristicSubscription = null;
     _characteristic = null;
 
     if (_device != null) {
       try {
         await _device!.disconnect();
-      } catch (_) {}
+        debugPrint('Device déconnecté: ${_device!.remoteId.str}');
+      } catch (e, s) {
+        debugPrint('Erreur device.disconnect: $e');
+        debugPrint('$s');
+      }
     }
 
     _device = null;
-    _connectionController.add(false);
+
+    if (!_connectionController.isClosed) {
+      _connectionController.add(false);
+    }
+
+    debugPrint('BleService.disconnect done');
   }
 
-  void dispose() {
-    _characteristicSubscription?.cancel();
+  Future<void> dispose() async {
+    debugPrint('BleService.dispose');
+
+    await disconnect();
+
+    if (!_dataController.isClosed) {
+      await _dataController.close();
+    }
+
+    if (!_connectionController.isClosed) {
+      await _connectionController.close();
+    }
   }
 }
