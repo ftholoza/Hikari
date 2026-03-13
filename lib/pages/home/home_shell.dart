@@ -7,6 +7,7 @@ import '../rehab/reeducation_page.dart';
 import '../history/historique_page.dart';
 import '../mKneeHurts/m_knee_hurts.dart';
 import '../bluetooth/bluetooth_test_page.dart';
+import '../features/calendar/calendar_page.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -18,24 +19,26 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  Widget _buildPage() {
-    switch (_index) {
-      case 0:
-        return const AccueilPage();
-      case 1:
-        return const EntrainementPage();
-      case 2:
-        return const ReeducationPage();
-      case 3:
-        return const HistoriquePage();
-      case 4:
-        return const BluetoothTestPage();
-      case 5:
-        return const KneePainPage();
-      default:
-        return const AccueilPage();
-    }
+Widget _buildPage() {
+  switch (_index) {
+    case 0:
+      return const AccueilPage();
+    case 1:
+      return const EntrainementPage();
+    case 2:
+      return const ReeducationPage();
+    case 3:
+      return const HistoriquePage();
+    case 4:
+      return const BluetoothTestPage();
+    case 5:
+      return const KneePainPage();
+    case 6:
+      return const CalendrierPage(); // 👈 ajouté
+    default:
+      return const AccueilPage();
   }
+}
 
   @override
   Widget build(BuildContext context) {

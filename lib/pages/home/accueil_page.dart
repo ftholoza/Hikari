@@ -3,6 +3,7 @@ import '../../core/app_colors.dart';
 import '../mKneeHurts/m_knee_hurts.dart';
 import '../../widgets/layout/hikari_header.dart';
 import '../bluetooth/bluetooth_test_page.dart';
+import '../features/calendar/calendar_page.dart';
 
 class AccueilPage extends StatefulWidget {
   const AccueilPage({super.key});
@@ -152,11 +153,10 @@ class _AccueilPageState extends State<AccueilPage> {
                       const Spacer(),
                       GestureDetector(
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Jour sélectionné : ${days[selectedDayIndex]}',
-                              ),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CalendrierPage(),
                             ),
                           );
                         },
