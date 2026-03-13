@@ -2,24 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'app.dart';
+import 'pages/calendar/data/planning_repository.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  await PlanningRepository.loadEntries();
+
   SystemChrome.setEnabledSystemUIMode(
-  SystemUiMode.immersiveSticky,
+    SystemUiMode.immersiveSticky,
   );
-  
+
   FlutterError.onError = (FlutterErrorDetails details) {
-  FlutterError.presentError(details);
-  debugPrint('FLUTTER ERROR: ${details.exception}');
-  debugPrintStack(stackTrace: details.stack);
+    FlutterError.presentError(details);
+    debugPrint('FLUTTER ERROR: ${details.exception}');
+    debugPrintStack(stackTrace: details.stack);
   };
-  
+
   runZonedGuarded(() {
-  runApp(const HikariApp());
+    runApp(const HikariApp());
   }, (error, stackTrace) {
-  debugPrint('ZONE ERROR: $error');
-  debugPrint('$stackTrace');
+    debugPrint('ZONE ERROR: $error');
+    debugPrint('$stackTrace');
   });
 }

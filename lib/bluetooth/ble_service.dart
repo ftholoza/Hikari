@@ -24,6 +24,7 @@ class BleService {
   BluetoothDevice? _device;
   BluetoothCharacteristic? _characteristic;
   StreamSubscription<List<int>>? _characteristicSubscription;
+  StreamSubscription<BluetoothConnectionState>? _deviceStateSubscription;
 
   final StreamController<OrtheseData> _dataController =
       StreamController<OrtheseData>.broadcast();
@@ -36,12 +37,32 @@ class BleService {
 
   BluetoothDevice? get device => _device;
 
-  bool get isConnected => _device != null && _characteristic != null;
+  OrtheseData? _lastData;
+  OrtheseData? get lastData => _lastData;
+
+  bool _isConnected = false;
+  bool get isConnected => _isConnected;
 
   String? get connectedDeviceName {
     if (_device == null) return null;
     if (_device!.platformName.isNotEmpty) return _device!.platformName;
     return _device!.remoteId.str;
+  }
+
+  void _setConnected(bool value) {
+    _isConnected = value;
+
+    if (!_connectionController.isClosed) {
+      _connectionController.add(value);
+    }
+  }
+
+  void _pushData(OrtheseData data) {
+    _lastData = data;
+
+    if (!_dataController.isClosed) {
+      _dataController.add(data);
+    }
   }
 
   Future<List<ScanResult>> scanDevices() async {
@@ -107,6 +128,21 @@ class BleService {
 
       debugPrint('BLE connecté au device, découverte des services...');
 
+      await _deviceStateSubscription?.cancel();
+      _deviceStateSubscription = _device!.connectionState.listen(
+        (state) async {
+          debugPrint('BLE connectionState: $state');
+
+          if (state == BluetoothConnectionState.disconnected) {
+            await _handleUnexpectedDisconnect();
+          }
+        },
+        onError: (error, stackTrace) {
+          debugPrint('Erreur connectionState.listen: $error');
+          debugPrint('$stackTrace');
+        },
+      );
+
       final services = await _device!.discoverServices();
 
       for (final service in services) {
@@ -126,7 +162,6 @@ class BleService {
               await _characteristic!.setNotifyValue(true);
 
               await _characteristicSubscription?.cancel();
-
               _characteristicSubscription =
                   _characteristic!.lastValueStream.listen(
                 (value) {
@@ -137,7 +172,7 @@ class BleService {
                     debugPrint('BLE raw: $raw');
 
                     final parsed = OrtheseData.fromBleString(raw);
-                    _dataController.add(parsed);
+                    _pushData(parsed);
                   } catch (e, s) {
                     debugPrint('Erreur parsing BLE: $e');
                     debugPrint('$s');
@@ -149,7 +184,7 @@ class BleService {
                 },
               );
 
-              _connectionController.add(true);
+              _setConnected(true);
               debugPrint('BleService.connectToDevice success');
               return true;
             }
@@ -168,6 +203,23 @@ class BleService {
     }
   }
 
+  Future<void> _handleUnexpectedDisconnect() async {
+    debugPrint('BleService._handleUnexpectedDisconnect');
+
+    try {
+      await _characteristicSubscription?.cancel();
+    } catch (e, s) {
+      debugPrint('Erreur cancel characteristicSubscription: $e');
+      debugPrint('$s');
+    }
+
+    _characteristicSubscription = null;
+    _characteristic = null;
+    _device = null;
+
+    _setConnected(false);
+  }
+
   Future<void> disconnect() async {
     debugPrint('BleService.disconnect start');
 
@@ -178,7 +230,15 @@ class BleService {
       debugPrint('$s');
     }
 
+    try {
+      await _deviceStateSubscription?.cancel();
+    } catch (e, s) {
+      debugPrint('Erreur cancel deviceStateSubscription: $e');
+      debugPrint('$s');
+    }
+
     _characteristicSubscription = null;
+    _deviceStateSubscription = null;
     _characteristic = null;
 
     if (_device != null) {
@@ -192,10 +252,7 @@ class BleService {
     }
 
     _device = null;
-
-    if (!_connectionController.isClosed) {
-      _connectionController.add(false);
-    }
+    _setConnected(false);
 
     debugPrint('BleService.disconnect done');
   }

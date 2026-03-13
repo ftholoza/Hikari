@@ -1,57 +1,46 @@
 import 'package:flutter/material.dart';
-import '../../../widgets/layout/hikari_header.dart';
+import '../../widgets/layout/hikari_header.dart';
+import 'data/planning_repository.dart';
 import 'models/reeducation_entry.dart';
 import 'widgets/calendar_grid.dart';
 import 'widgets/calendar_header.dart';
 
 class CalendrierPage extends StatefulWidget {
-  const CalendrierPage({super.key});
+  final DateTime? initialDate;
+
+  const CalendrierPage({
+    super.key,
+    this.initialDate,
+  });
 
   @override
   State<CalendrierPage> createState() => _CalendrierPageState();
 }
 
 class _CalendrierPageState extends State<CalendrierPage> {
-  DateTime currentMonth = DateTime(2026, 2);
+  late DateTime currentMonth;
   DateTime? selectedDate;
 
-  final List<ReeducationEntry> entries = [
-    ReeducationEntry(
-      date: DateTime(2026, 2, 1),
-      type: ReeducationType.marche,
-      title: 'Marche légère',
-    ),
-    ReeducationEntry(
-      date: DateTime(2026, 2, 3),
-      type: ReeducationType.renforcement,
-      title: 'Renforcement quadriceps',
-    ),
-    ReeducationEntry(
-      date: DateTime(2026, 2, 3),
-      type: ReeducationType.mobilite,
-      title: 'Mobilité genou',
-    ),
-    ReeducationEntry(
-      date: DateTime(2026, 2, 7),
-      type: ReeducationType.marche,
-      title: 'Marche assistée',
-    ),
-    ReeducationEntry(
-      date: DateTime(2026, 2, 15),
-      type: ReeducationType.etirement,
-      title: 'Étirements',
-    ),
-  ];
+  List<ReeducationEntry> get entries => PlanningRepository.entries;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final initial = widget.initialDate ?? DateTime.now();
+    currentMonth = DateTime(initial.year, initial.month, 1);
+    selectedDate = DateTime(initial.year, initial.month, initial.day);
+  }
 
   void _previousMonth() {
     setState(() {
-      currentMonth = DateTime(currentMonth.year, currentMonth.month - 1);
+      currentMonth = DateTime(currentMonth.year, currentMonth.month - 1, 1);
     });
   }
 
   void _nextMonth() {
     setState(() {
-      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1);
+      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
     });
   }
 
@@ -104,15 +93,27 @@ class _CalendrierPageState extends State<CalendrierPage> {
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4F6BEE),
+                      color: e.type.color,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Text(
-                      e.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          e.type.icon,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            e.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -163,92 +164,95 @@ class _CalendrierPageState extends State<CalendrierPage> {
                 20,
                 20 + MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Ajouter une rééducation',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: titleController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Ex: Renforcement quadriceps',
-                      hintStyle: const TextStyle(color: Colors.white54),
-                      filled: true,
-                      fillColor: const Color(0xFF2F2F2F),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ajouter une rééducation',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<ReeducationType>(
-                    value: selectedType,
-                    dropdownColor: const Color(0xFF2F2F2F),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFF2F2F2F),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    items: ReeducationType.values.map((type) {
-                      return DropdownMenuItem(
-                        value: type,
-                        child: Text(
-                          _labelForType(type),
-                          style: const TextStyle(color: Colors.white),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: titleController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Ex: Renforcement quadriceps',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        filled: true,
+                        fillColor: const Color(0xFF2F2F2F),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setModalState(() => selectedType = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (titleController.text.trim().isEmpty) return;
-
-                        setState(() {
-                          entries.add(
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<ReeducationType>(
+                      value: selectedType,
+                      dropdownColor: const Color(0xFF2F2F2F),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFF2F2F2F),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items: ReeducationType.values.map((type) {
+                        return DropdownMenuItem(
+                          value: type,
+                          child: Text(
+                            type.label,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setModalState(() => selectedType = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (titleController.text.trim().isEmpty) return;
+                        
+                          await PlanningRepository.addEntry(
                             ReeducationEntry(
                               date: date,
                               type: selectedType,
                               title: titleController.text.trim(),
                             ),
                           );
-                        });
-
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F6BEE),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                        
+                          if (!mounted) return;
+                        
+                          setState(() {});
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F6BEE),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: const Text('Valider'),
                       ),
-                      child: const Text('Valider'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -257,24 +261,10 @@ class _CalendrierPageState extends State<CalendrierPage> {
     );
   }
 
-  String _labelForType(ReeducationType type) {
-    switch (type) {
-      case ReeducationType.marche:
-        return 'Marche';
-      case ReeducationType.renforcement:
-        return 'Renforcement';
-      case ReeducationType.mobilite:
-        return 'Mobilité';
-      case ReeducationType.etirement:
-        return 'Étirement';
-      case ReeducationType.proprioception:
-        return 'Proprioception';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     const bg = Color(0xFF2F2F2F);
+    const blue = Color(0xFF5A73F2);
     const lightText = Color(0xFFBEBEBE);
 
     return Scaffold(
@@ -340,6 +330,36 @@ class _CalendrierPageState extends State<CalendrierPage> {
                       onDayTap: _onDayTapped,
                     ),
                     const SizedBox(height: 26),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final targetDate = selectedDate ??
+                              DateTime(
+                                currentMonth.year,
+                                currentMonth.month,
+                                1,
+                              );
+                          _showAddReeducationSheet(targetDate);
+                        },
+                        icon: const Icon(Icons.add, color: Colors.white),
+                        label: const Text(
+                          'AJOUTER UNE RÉÉDUCATION',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

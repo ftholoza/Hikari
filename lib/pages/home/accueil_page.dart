@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
-import '../mKneeHurts/m_knee_hurts.dart';
 import '../../widgets/layout/hikari_header.dart';
 import '../bluetooth/bluetooth_test_page.dart';
-import '../features/calendar/calendar_page.dart';
+import '../calendar/calendar_page.dart';
+import '../calendar/data/planning_repository.dart';
+import '../calendar/models/reeducation_entry.dart';
+import '../mKneeHurts/m_knee_hurts.dart';
 
 class AccueilPage extends StatefulWidget {
   const AccueilPage({super.key});
@@ -25,8 +27,56 @@ class _AccueilPageState extends State<AccueilPage> {
     'DIM',
   ];
 
+  List<ReeducationEntry> get entries => PlanningRepository.entries;
+
+  DateTime _dateForIndex(int index) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+
+    return DateTime(
+      monday.year,
+      monday.month,
+      monday.day + index,
+    );
+  }
+
+  bool _sameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  List<ReeducationEntry> _entriesForSelectedDay() {
+    final selectedDate = _dateForIndex(selectedDayIndex);
+
+    return entries.where((entry) {
+      return _sameDate(entry.date, selectedDate);
+    }).toList();
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      '',
+      'janv.',
+      'févr.',
+      'mars',
+      'avr.',
+      'mai',
+      'juin',
+      'juil.',
+      'août',
+      'sept.',
+      'oct.',
+      'nov.',
+      'déc.',
+    ];
+
+    return '${date.day} ${months[date.month]} ${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final selectedEntries = _entriesForSelectedDay();
+    final selectedDate = _dateForIndex(selectedDayIndex);
+
     return Container(
       color: AppColors.background,
       child: Column(
@@ -63,7 +113,6 @@ class _AccueilPageState extends State<AccueilPage> {
                     ],
                   ),
                   const SizedBox(height: 14),
-
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
@@ -122,7 +171,9 @@ class _AccueilPageState extends State<AccueilPage> {
                                 MaterialPageRoute(
                                   builder: (_) => const BluetoothTestPage(),
                                 ),
-                              );
+                              ).then((_) {
+                                if (mounted) setState(() {});
+                              });
                             },
                             icon: const Icon(Icons.bluetooth_searching_rounded),
                             label: const Text(
@@ -137,9 +188,7 @@ class _AccueilPageState extends State<AccueilPage> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 22),
-
                   Row(
                     children: [
                       const Text(
@@ -156,9 +205,13 @@ class _AccueilPageState extends State<AccueilPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const CalendrierPage(),
+                              builder: (_) => CalendrierPage(
+                                initialDate: selectedDate,
+                              ),
                             ),
-                          );
+                          ).then((_) {
+                            if (mounted) setState(() {});
+                          });
                         },
                         child: const Row(
                           children: [
@@ -181,9 +234,7 @@ class _AccueilPageState extends State<AccueilPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 14),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(
@@ -191,6 +242,9 @@ class _AccueilPageState extends State<AccueilPage> {
                       (index) => _DayChip(
                         label: days[index],
                         active: index == selectedDayIndex,
+                        hasEntries: entries.any(
+                          (entry) => _sameDate(entry.date, _dateForIndex(index)),
+                        ),
                         onTap: () {
                           setState(() {
                             selectedDayIndex = index;
@@ -199,13 +253,13 @@ class _AccueilPageState extends State<AccueilPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 18),
-
-                  _SelectedDayCard(dayLabel: days[selectedDayIndex]),
-
+                  _SelectedDayCard(
+                    dayLabel: days[selectedDayIndex],
+                    formattedDate: _formatDate(selectedDate),
+                    entries: selectedEntries,
+                  ),
                   const SizedBox(height: 24),
-
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -257,16 +311,20 @@ class _AccueilPageState extends State<AccueilPage> {
 class _DayChip extends StatelessWidget {
   final String label;
   final bool active;
+  final bool hasEntries;
   final VoidCallback onTap;
 
   const _DayChip({
     required this.label,
     required this.active,
+    required this.hasEntries,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = hasEntries ? AppColors.primary : Colors.transparent;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -276,6 +334,10 @@ class _DayChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? AppColors.primary : Colors.white,
           shape: BoxShape.circle,
+          border: Border.all(
+            color: active ? AppColors.primary : borderColor,
+            width: hasEntries && !active ? 2 : 1,
+          ),
           boxShadow: active
               ? [
                   BoxShadow(
@@ -302,11 +364,20 @@ class _DayChip extends StatelessWidget {
 
 class _SelectedDayCard extends StatelessWidget {
   final String dayLabel;
+  final String formattedDate;
+  final List<ReeducationEntry> entries;
 
-  const _SelectedDayCard({required this.dayLabel});
+  const _SelectedDayCard({
+    required this.dayLabel,
+    required this.formattedDate,
+    required this.entries,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final visibleEntries = entries.take(3).toList();
+    final extraCount = entries.length - visibleEntries.length;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -317,24 +388,84 @@ class _SelectedDayCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Planning du $dayLabel',
-            style: const TextStyle(
-              color: Color(0xFF222222),
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'Planning du $dayLabel',
+                style: const TextStyle(
+                  color: Color(0xFF222222),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                '• $formattedDate',
+                style: const TextStyle(
+                  color: Color(0xFF666666),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            '• Séance mobilité — 18 min\n• Étirements — 10 min\n• Vérification orthèse',
-            style: TextStyle(
-              color: Color(0xFF555555),
-              fontSize: 12,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
+          const SizedBox(height: 10),
+          if (entries.isEmpty)
+            const Text(
+              'Aucune rééducation prévue.',
+              style: TextStyle(
+                color: Color(0xFF555555),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            )
+          else ...[
+            ...visibleEntries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 18,
+                      alignment: Alignment.topCenter,
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Icon(
+                        entry.type.icon,
+                        size: 14,
+                        color: entry.type.color,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        entry.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF555555),
+                          fontSize: 12,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
+            if (extraCount > 0)
+              Text(
+                '+$extraCount autre${extraCount > 1 ? 's' : ''}',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+          ],
         ],
       ),
     );

@@ -7,7 +7,7 @@ import '../rehab/reeducation_page.dart';
 import '../history/historique_page.dart';
 import '../mKneeHurts/m_knee_hurts.dart';
 import '../bluetooth/bluetooth_test_page.dart';
-import '../features/calendar/calendar_page.dart';
+import '../calendar/calendar_page.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
